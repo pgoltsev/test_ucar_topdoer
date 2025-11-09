@@ -1,5 +1,4 @@
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, contains_eager
 
 from test_ucar.db.crud import async_session
@@ -15,7 +14,11 @@ async def create(description: str, status: IncidentStatusEnum, source: IncidentS
         session.add(incident_obj)
         await session.flush()
 
-        await _set_status(incident_obj, status, session)
+        status_obj: IncidentStatus = IncidentStatus(value=status, incident=incident_obj)
+        session.add(status_obj)
+        await session.flush()
+
+        incident_obj.status = status_obj
 
         await session.commit()
 
@@ -88,11 +91,3 @@ async def set_status(incident_id: int, status: IncidentStatusEnum, from_status_i
             await session.commit()
 
     return success
-
-
-async def _set_status(incident_obj: Incident, status: IncidentStatusEnum, session: AsyncSession) -> None:
-    status_obj: IncidentStatus = IncidentStatus(value=status, incident=incident_obj)
-    session.add(status_obj)
-    await session.flush()
-
-    incident_obj.status = status_obj
