@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, contains_eager
 
@@ -40,7 +40,7 @@ async def filter_by(
     filters = []
     if statuses:
         filters.append(IncidentStatus.value.in_(statuses))
-    async with (async_session() as session):
+    async with async_session() as session:
         stmt = (
             select(Incident)
             .join(Incident.status).
@@ -56,12 +56,38 @@ async def filter_by(
     return list(objs)
 
 
-async def set_status(incident: Incident, status: IncidentStatusEnum) -> Incident:
-    async with async_session() as session:
-        await _set_status(incident, status, session)
-        await session.commit()
+async def set_status(incident_id: int, status: IncidentStatusEnum, from_status_id: int) -> bool:
+    """
+    Обновляет статус инцидента по его ID.
+    :param incident_id: ID инцидента, у которого надо обновить статус.
+    :param status: Новый статус.
+    :param from_status_id: ID статуса, с которого надо обновить.
+    Используется для исключения конкурентного обновления статуса.
+    :return: True, если статус инцидента был успешно обновлен, иначе - False.
+    """
+    success: bool = False
 
-    return incident
+    async with async_session() as session:
+        # Создаем новый статус.
+        status_obj: IncidentStatus = IncidentStatus(value=status, incident_id=incident_id)
+        session.add(status_obj)
+        await session.flush()
+
+        # Обновляем статус у инцидента.
+        # Статус обновляется только если у инцидента в момент обновления ожидаемый активный статус.
+        stmt = (
+            update(Incident)
+            .where(
+                Incident.id == incident_id,
+                Incident.status_id == from_status_id,
+            ).values(status_id=status_obj.id).returning(Incident.id)
+        )
+        success = (await session.scalars(stmt)).first() is not None
+        if success:
+            # Если инцидент с нужным статусом найден и статус обновлен.
+            await session.commit()
+
+    return success
 
 
 async def _set_status(incident_obj: Incident, status: IncidentStatusEnum, session: AsyncSession) -> None:

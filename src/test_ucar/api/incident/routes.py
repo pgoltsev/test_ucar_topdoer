@@ -7,6 +7,7 @@ from test_ucar.api.incident.models import IncidentCreateModel, IncidentReadModel
     IncidentListModel, IncidentFilterParams
 from test_ucar.db.crud import incident as incident_crud
 from test_ucar.db.models import Incident
+from test_ucar.services.incident import IncidentStatusManager
 
 router = APIRouter(
     prefix='/incidents',
@@ -54,6 +55,23 @@ async def update_incident_status(incident_id: int, item: IncidentStatusUpdateMod
     obj: Incident | None = await incident_crud.get(id_=incident_id)
     if obj is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if not IncidentStatusManager.can_transit(obj.status.value, item.status):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'No status transition available from "{obj.status.value}" to "{item.status}"',
+        )
 
-    await incident_crud.set_status(incident=obj, status=item.status)
+    updated: bool = await incident_crud.set_status(
+        incident_id=obj.id,
+        status=item.status,
+        from_status_id=obj.status.id,
+    )
+    if updated:
+        obj: Incident = await incident_crud.get(id_=incident_id)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Unable to set new status because status was already updated',
+        )
+
     return obj

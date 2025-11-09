@@ -35,6 +35,46 @@ async def test_update_status(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_update_to_same_status(async_client: AsyncClient):
+    incident: Incident = await incident_crud.create(
+        description='Что-то случилось!',
+        status=IncidentStatusEnum.SUBMITTED,
+        source=IncidentSourceEnum.PARTNER,
+    )
+
+    async with async_client as ac:
+        response = await ac.patch(
+            f'/api/v1/incidents/{incident.id}/',
+            json={
+                'status': IncidentStatusEnum.SUBMITTED.value,
+            })
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    response_data: dict = response.json()
+    assert response_data['detail'] == 'No status transition available from "submitted" to "submitted"'
+
+
+@pytest.mark.asyncio
+async def test_update_to_incorrect_status(async_client: AsyncClient):
+    incident: Incident = await incident_crud.create(
+        description='Что-то случилось!',
+        status=IncidentStatusEnum.SUBMITTED,
+        source=IncidentSourceEnum.PARTNER,
+    )
+
+    async with async_client as ac:
+        response = await ac.patch(
+            f'/api/v1/incidents/{incident.id}/',
+            json={
+                'status': IncidentStatusEnum.RESOLVED.value,
+            })
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    response_data: dict = response.json()
+    assert response_data['detail'] == 'No status transition available from "submitted" to "resolved"'
+
+
+@pytest.mark.asyncio
 async def test_update_status_of_missing(async_client: AsyncClient):
     async with async_client as ac:
         response = await ac.patch(
