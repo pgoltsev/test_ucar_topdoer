@@ -1,14 +1,13 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import AsyncClient
 from starlette import status
 
 from test_ucar.db.crud import incident as incident_crud
 from test_ucar.db.models import Incident, IncidentStatusEnum, IncidentSourceEnum
-from test_ucar.main import app
 
 
 @pytest.mark.asyncio
-async def test_filter_by_status():
+async def test_filter_by_status(async_client: AsyncClient):
     expected_incidents: list[Incident] = [
         await incident_crud.create(
             description=f'Что-то случилось {_}!',
@@ -24,9 +23,7 @@ async def test_filter_by_status():
         source=IncidentSourceEnum.PARTNER,
     )
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with async_client as ac:
         response = await ac.get('/api/v1/incidents/', params={
             'offset': 0,
             'limit': 10,

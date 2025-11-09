@@ -1,25 +1,22 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import AsyncClient
 from starlette import status
 
 from test_ucar.db.crud import incident as incident_crud
 from test_ucar.db.models import Incident, IncidentStatusEnum, IncidentSourceEnum
-from test_ucar.main import app
 
 
 @pytest.mark.asyncio
-async def test_update_status():
+async def test_update_status(async_client: AsyncClient):
     incident: Incident = await incident_crud.create(
         description='Что-то случилось!',
         status=IncidentStatusEnum.SUBMITTED,
         source=IncidentSourceEnum.PARTNER,
     )
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with async_client as ac:
         response = await ac.patch(
-            f'/api/v1/incidents/{incident.id}/status',
+            f'/api/v1/incidents/{incident.id}/',
             json={
                 'status': IncidentStatusEnum.ACKNOWLEDGED.value,
             })
@@ -38,10 +35,8 @@ async def test_update_status():
 
 
 @pytest.mark.asyncio
-async def test_update_status_of_missing():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+async def test_update_status_of_missing(async_client: AsyncClient):
+    async with async_client as ac:
         response = await ac.patch(
             f'/api/v1/incidents/-1/status',
             json={

@@ -43,7 +43,7 @@ async def create_incident(item: IncidentCreateModel):
     return obj
 
 
-@router.patch('/{incident_id}/status', response_model=IncidentReadModel, status_code=status.HTTP_200_OK)
+@router.patch('/{incident_id}/', response_model=IncidentReadModel, status_code=status.HTTP_200_OK)
 async def update_incident_status(incident_id: int, item: IncidentStatusUpdateModel):
     """
     Обновляет статус существующего инцидента.
