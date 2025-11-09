@@ -43,4 +43,4 @@ ENTRYPOINT []
 USER nonroot
 
 # Run the app
-ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/entrypoint.sh"]
