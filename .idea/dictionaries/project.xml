@@ -2,6 +2,7 @@
   <dictionary name="project">
     <words>
       <w>datefmt</w>
+      <w>isready</w>
     </words>
   </dictionary>
 </component>
