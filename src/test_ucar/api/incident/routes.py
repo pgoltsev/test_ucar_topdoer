@@ -61,11 +61,7 @@ async def update_incident_status(incident_id: int, item: IncidentStatusUpdateMod
             detail=f'No status transition available from "{obj.status.value}" to "{item.status}"',
         )
 
-    updated: bool = await incident_crud.set_status(
-        incident_id=obj.id,
-        status=item.status,
-        from_status_id=obj.status.id,
-    )
+    updated: bool = await incident_crud.set_status(incident=obj, status=item.status)
     if updated:
         obj: Incident = await incident_crud.get(id_=incident_id)
     else:

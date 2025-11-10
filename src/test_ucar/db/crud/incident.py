@@ -59,20 +59,18 @@ async def filter_by(
     return list(objs)
 
 
-async def set_status(incident_id: int, status: IncidentStatusEnum, from_status_id: int) -> bool:
+async def set_status(incident: Incident, status: IncidentStatusEnum) -> bool:
     """
     Обновляет статус инцидента по его ID.
-    :param incident_id: ID инцидента, у которого надо обновить статус.
+    :param incident: Инцидент, у которого надо обновить статус.
     :param status: Новый статус.
-    :param from_status_id: ID статуса, с которого надо обновить.
-    Используется для исключения конкурентного обновления статуса.
     :return: True, если статус инцидента был успешно обновлен, иначе - False.
     """
     success: bool = False
 
     async with async_session() as session:
         # Создаем новый статус.
-        status_obj: IncidentStatus = IncidentStatus(value=status, incident_id=incident_id)
+        status_obj: IncidentStatus = IncidentStatus(value=status, incident=incident)
         session.add(status_obj)
         await session.flush()
 
@@ -81,8 +79,8 @@ async def set_status(incident_id: int, status: IncidentStatusEnum, from_status_i
         stmt = (
             update(Incident)
             .where(
-                Incident.id == incident_id,
-                Incident.status_id == from_status_id,
+                Incident.id == incident.id,
+                Incident.status_id == incident.status.id,
             ).values(status_id=status_obj.id).returning(Incident.id)
         )
         success = (await session.scalars(stmt)).first() is not None
